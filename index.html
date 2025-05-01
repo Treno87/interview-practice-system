@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>음성 학습 시스템</title>
+  <style>
+    body { 
+      font-family: 'Noto Sans KR', sans-serif; 
+      max-width: 800px; 
+      margin: 0 auto; 
+      padding: 20px; 
+      background-color: #f5f5f5;
+    }
+    .container { 
+      background: white; 
+      padding: 20px; 
+      border-radius: 8px; 
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+    }
+    h1 {
+      color: #1a73e8;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    select, button { 
+      width: 100%; 
+      padding: 10px; 
+      margin: 5px 0 15px; 
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 16px;
+    }
+    button {
+      background-color: #1a73e8;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:hover {
+      background-color: #1557b0;
+    }
+    button:disabled {
+      background-color: #aaa;
+      cursor: not-allowed;
+    }
+    .player-container { 
+      margin-top: 20px; 
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid #dee2e6;
+    }
+    .speed-control { 
+      margin: 10px 0; 
+    }
+    .tab-container { 
+      display: flex; 
+      border-bottom: 1px solid #ddd; 
+      margin-bottom: 20px; 
+    }
+    .tab { 
+      padding: 10px 20px; 
+      cursor: pointer; 
+      background: #f1f1f1; 
+      border: 1px solid #ddd; 
+      border-radius: 4px 4px 0 0; 
+      margin-right: 5px; 
+    }
+    .tab.active { 
+      background: white; 
+      font-weight: bold; 
+      border-bottom: 1px solid white;
+      margin-bottom: -1px;
+    }
+    .tab-content { 
+      display: none; 
+    }
+    .tab-content.active { 
+      display: block; 
+    }
+    .stats-item { 
+      display: flex; 
+      justify-content: space-between; 
+      padding: 10px; 
+      border-bottom: 1px solid #eee; 
+    }
+    .stats-item:nth-child(odd) {
+      background-color: #f8f9fa;
+    }
+    .message {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+      text-align: center;
+    }
+    .success {
+      background-color: #d4edda;
+      color: #155724;
+    }
+    .error {
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+    .card {
+      background-color: white;
+      border-radius: 8px;
+      padding: 15px;
+      margin-top: 15px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .card-title {
+      font-weight: bold;
+      margin-bottom: 10px;
+      color: #1a73e8;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 5px;
+    }
+    audio {
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>음성 학습 시스템</h1>
+    
+    <div class="tab-container">
+      <div class="tab active" onclick="switchTab('player-tab')">학습하기</div>
+      <div class="tab" onclick="switchTab('stats-tab')">학습 통계</div>
+    </div>
+    
+    <!-- 학습 탭 -->
+    <div id="player-tab" class="tab-content active">
+      <div>
+        <label for="user-select">학습자 선택:</label>
+        <select id="user-select"></select>
+      </div>
+      
+      <div>
+        <label for="audio-select">파일 선택:</label>
+        <select id="audio-select"></select>
+      </div>
+      
+      <button id="play-button" onclick="loadAudio()">재생하기</button>
+      
+      <div id="message-container"></div>
+      
+      <div id="player-container" class="player-container" style="display:none;">
+        <audio id="audio-player" controls></audio>
+        
+        <div class="speed-control">
+          <label for="speed-select">재생 속도:</label>
+          <select id="speed-select" onchange="changeSpeed()">
+            <option value="0.5">0.5x</option>
+            <option value="0.75">0.75x</option>
+            <option value="1" selected>1.0x</option>
+            <option value="1.25">1.25x</option>
+            <option value="1.5">1.5x</option>
+            <option value="2">2.0x</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 통계 탭 -->
+    <div id="stats-tab" class="tab-content">
+      <div>
+        <label for="stats-user-select">학습자 선택:</label>
+        <select id="stats-user-select">
+          <option value="all">모든 학습자</option>
+        </select>
+      </div>
+      
+      <button onclick="loadStats()">통계 보기</button>
+      
+      <div id="stats-loading" style="display:none; text-align:center; margin-top:20px;">
+        통계를 불러오는 중...
+      </div>
+      
+      <div id="stats-container" style="display:none;">
+        <div class="card">
+          <div class="card-title">학습 요약</div>
+          <div id="stats-summary"></div>
+        </div>
+        
+        <div class="card" style="margin-top:15px;">
+          <div class="card-title">파일별 학습 횟수</div>
+          <div id="stats-details"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+  
+  <script>
+    // Firebase 설정 - 실제 값으로 교체하세요
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+    
+    // Firebase 초기화
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    
+    // 오디오 파일 데이터 - audio 폴더의 실제 파일로 교체하세요
+    const audioFiles = [
+      { id: "file1", name: "파일1", path: "audio/file1.mp3" },
+      { id: "file2", name: "파일2", path: "audio/file2.mp3" },
+      // 업로드한 모든 MP3 파일에 대해 항목 추가
+    ];
+    
+    // 사용자 데이터 - 실제 학습자 목록으로 교체하세요
+    const users = [
+      "학습자1", 
+      "학습자2", 
+      "학습자3"
+      // 필요한 모든 학습자 추가
+    ];
+    
+    // 현재 재생 정보
+    let currentUser = '';
+    let currentFile = '';
+    
+    // 페이지 로드 시 초기화
+    window.onload = function() {
+      // 사용자 목록 로드
+      const userSelect = document.getElementById('user-select');
+      const statsUserSelect = document.getElementById('stats-user-select');
+      
+      // 기본 옵션 추가
+      const defaultOption = document.createElement('option');
+      defaultOption.value = '';
+      defaultOption.textContent = '-- 학습자 선택 --';
+      defaultOption.disabled = true;
+      defaultOption.selected = true;
+      userSelect.appendChild(defaultOption);
+      
+      users.forEach(user => {
+        // 학습 탭의 사용자 선택
+        const option1 = document.createElement('option');
+        option1.value = user;
+        option1.textContent = user;
+        userSelect.appendChild(option1);
+        
+        // 통계 탭의 사용자 선택
+        const option2 = document.createElement('option');
+        option2.value = user;
+        option2.textContent = user;
+        statsUserSelect.appendChild(option2);
+      });
+      
+      // 오디오 파일 목록 로드
+      const audioSelect = document.getElementById('audio-select');
+      
+      // 기본 옵션 추가
+      const audioDefaultOption = document.createElement('option');
+      audioDefaultOption.value = '';
+      audioDefaultOption.textContent = '-- 파일 선택 --';
+      audioDefaultOption.disabled = true;
+      audioDefaultOption.selected = true;
+      audioSelect.appendChild(audioDefaultOption);
+      
+      audioFiles.forEach(file => {
+        const option = document.createElement('option');
+        option.value = file.id;
+        option.textContent = file.name;
+        audioSelect.appendChild(option);
+      });
+    };
+    
+    // 탭 전환 함수
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(content => content.style.display = 'none');
+      
+      document.querySelector(`.tab[onclick="switchTab('${tabId}')"]`).classList.add('active');
+      document.getElementById(tabId).style.display = 'block';
+      
+      if (tabId === 'stats-tab') {
+        loadStats();
+      }
+    }
+    
+    // 오디오 로드 및 재생
+    function loadAudio() {
+      const userSelect = document.getElementById('user-select');
+      const audioSelect = document.getElementById('audio-select');
+      
+      currentUser = userSelect.value;
+      const fileId = audioSelect.value;
+      
+      if (!currentUser || !fileId) {
+        showMessage('학습자와 파일을 모두 선택해주세요.', 'error');
+        return;
+      }
+      
+      // 선택된 파일 찾기
+      const selectedFile = audioFiles.find(file => file.id === fileId);
+      if (!selectedFile) return;
+      
+      currentFile = selectedFile.name;
+      
+      // 플레이어 설정
+      const player = document.getElementById('audio-player');
+      player.src = selectedFile.path;
+      document.getElementById('player-container').style.display = 'block';
+      
+      // 현재 속도 적용
+      const speed = document.getElementById('speed-select').value;
+      player.playbackRate = parseFloat(speed);
+      
+      // 재생 시작
+      player.play();
+      
+      // 성공 메시지 표시
+      showMessage('재생을 시작합니다!', 'success');
+      
+      // 학습 기록 저장
+      logStudy(currentUser, currentFile);
+    }
+    
+    // 재생 속도 변경
+    function changeSpeed() {
+      const player = document.getElementById('audio-player');
+      const speed = document.getElementById('speed-select').value;
+      player.playbackRate = parseFloat(speed);
+      
+      showMessage(`재생 속도가 ${speed}x로 변경되었습니다.`, 'success');
+    }
+    
+    // 메시지 표시 함수
+    function showMessage(message, type) {
+      const container = document.getElementById('message-container');
+      container.innerHTML = `<div class="message ${type}">${message}</div>`;
+      
+      // 성공 메시지는 3초 후 사라짐
+      if (type === 'success') {
+        setTimeout(function() {
+          container.innerHTML = '';
+        }, 3000);
+      }
+    }
+    
+    // 학습 기록 저장
+    function logStudy(user, fileName) {
+      db.collection('learning_logs').add({
+        user: user,
+        fileName: fileName,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      })
+      .then(() => {
+        console.log('학습 기록 저장 완료');
+      })
+      .catch(error => {
+        console.error('학습 기록 저장 오류:', error);
+        showMessage('학습 기록 저장 중 오류가 발생했습니다.', 'error');
+      });
+    }
+    
+    // 통계 데이터 로드
+    function loadStats() {
+      const user = document.getElementById('stats-user-select').value;
+      document.getElementById('stats-loading').style.display = 'block';
+      document.getElementById('stats-container').style.display = 'none';
+      
+      let query = db.collection('learning_logs');
+      if (user !== 'all') {
+        query = query.where('user', '==', user);
+      }
+      
+      query.get().then(snapshot => {
+        document.getElementById('stats-loading').style.display = 'none';
+        document.getElementById('stats-container').style.display = 'block';
+        
+        const statsSummary = document.getElementById('stats-summary');
+        const statsDetails = document.getElementById('stats-details');
+        
+        if (snapshot.empty) {
+          statsSummary.innerHTML = '<p>학습 기록이 없습니다.</p>';
+          statsDetails.innerHTML = '';
+          return;
+        }
+        
+        // 총 학습 횟수
+        const totalCount = snapshot.size;
+        
+        // 마지막 학습 시간
+        let lastStudyTime = null;
+        
+        // 파일별 통계
+        const fileStats = {};
+        
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          
+          // 파일별 카운트
+          if (!fileStats[data.fileName]) {
+            fileStats[data.fileName] = 0;
+          }
+          fileStats[data.fileName]++;
+          
+          // 마지막 학습 시간 갱신
+          if (data.timestamp && (!lastStudyTime || data.timestamp.toDate() > lastStudyTime)) {
+            lastStudyTime = data.timestamp.toDate();
+          }
+        });
+        
+        // 통계 요약 표시
+        const userText = user !== 'all' ? `<strong>${user}</strong>님의 ` : '전체 학습자의 ';
+        statsSummary.innerHTML = `
+          <p>${userText}총 학습 횟수: <strong>${totalCount}회</strong></p>
+          ${lastStudyTime ? `<p>마지막 학습 시간: <strong>${lastStudyTime.toLocaleString('ko-KR')}</strong></p>` : ''}
+        `;
+        
+        // 파일별 통계 표시
+        statsDetails.innerHTML = '';
+        Object.keys(fileStats).sort((a, b) => fileStats[b] - fileStats[a]).forEach(fileName => {
+          const div = document.createElement('div');
+          div.className = 'stats-item';
+          div.innerHTML = `
+            <span>${fileName}</span>
+            <strong>${fileStats[fileName]}회</strong>
+          `;
+          statsDetails.appendChild(div);
+        });
+      })
+      .catch(error => {
+        console.error('통계 조회 오류:', error);
+        document.getElementById('stats-loading').style.display = 'none';
+        document.getElementById('stats-container').style.display = 'block';
+        document.getElementById('stats-summary').innerHTML = '<p>통계 데이터를 불러오는 데 실패했습니다.</p>';
+      });
+    }
+  </script>
+</body>
+</html>
